@@ -30,7 +30,7 @@ export const ReCaptcha: React.FunctionComponent<IRecaptchaProps> = ({ setToken, 
     return (
         <div
             style={{
-                marginLeft: 'calc(100% - 440px)',
+                marginLeft: 'calc((100% - 304px) / 2)',
                 marginTop: '25px',
             }}
         >

@@ -59,5 +59,15 @@
         /// The score is minor than the Minimum Score  
         /// </summary>
         MinimumScore = 10,
+
+        /// <summary>
+        /// Multi-factor authentication is unavailable.
+        /// </summary>
+        MultiFactorUnavailable = 11,
+
+        /// <summary>
+        /// Multi-factor authentication denied.
+        /// </summary>
+        MultiFactorAuthDenied = 12,
     }
 }

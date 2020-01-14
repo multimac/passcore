@@ -13,5 +13,9 @@ namespace Unosquare.PassCore.Web.Models
         public string UsernameDefaultDomainHelperBlock { get; set; }
         public string UsernameHelpblock { get; set; }
         public string UsernameLabel { get; set; }
+        public string MfaSelectionHelpblock { get; set; }
+        public string MfaSelectionLabel { get; set; }
+        public string MfaPasscodeHelpblock {get;set;}
+        public string MfaPasscodeLabel {get;set;}
     }
 }

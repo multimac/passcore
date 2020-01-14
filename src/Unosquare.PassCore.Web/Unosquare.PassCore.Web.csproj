@@ -19,6 +19,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="3.1.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
     <PackageReference Include="SimpleBase" Version="3.0.0" />
     <PackageReference Include="StyleCop.Analyzers" Version="1.1.118">
       <PrivateAssets>all</PrivateAssets>
@@ -47,6 +49,13 @@
   </ItemGroup>
   <PropertyGroup Condition="'$(PASSCORE_PROVIDER)' == 'LDAP'">
     <DefineConstants>PASSCORE_LDAP_PROVIDER</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(PASSCORE_MFA_PROVIDER)' == 'DUO'">
+    <!-- Duo Multi-Factor provider -->
+    <ProjectReference Include="..\Unosquare.PassCore.MultiFactorAuthProvider.Duo\Unosquare.PassCore.MultiFactorAuthProvider.Duo.csproj" />
+  </ItemGroup>
+  <PropertyGroup Condition="'$(PASSCORE_MFA_PROVIDER)' == 'DUO'">
+    <DefineConstants>PASSCODE_MFA_DUO_PROVIDER</DefineConstants>
   </PropertyGroup>
   <Target Name="NpmInstall" BeforeTargets="Build" Condition="!Exists('.\ClientApp\node_modules')">
     <Exec Command="node --version" ContinueOnError="true">

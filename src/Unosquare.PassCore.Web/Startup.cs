@@ -16,6 +16,9 @@ namespace Unosquare.PassCore.Web
 #else
     using PasswordProvider;
 #endif
+#if PASSCODE_MFA_DUO_PROVIDER
+    using Unosquare.PassCore.MultiFactorAuthProvider.Duo;
+#endif
 
     /// <summary>
     /// Represents this application's main class.
@@ -56,7 +59,7 @@ namespace Unosquare.PassCore.Web
         /// <returns>The web host builder.</returns>
         public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
             WebHost.CreateDefaultBuilder(args)
-            .UseStartup<Startup>();
+                .UseStartup<Startup>();
 
         /// <summary>
         /// This method gets called by the runtime. Use this method to add services to the container.
@@ -67,6 +70,7 @@ namespace Unosquare.PassCore.Web
         {
             services.Configure<ClientSettings>(Configuration.GetSection(nameof(ClientSettings)));
             services.Configure<WebSettings>(Configuration.GetSection(nameof(WebSettings)));
+
 #if DEBUG
             services.Configure<IAppSettings>(Configuration.GetSection(AppSettingsSectionName));
             services.AddSingleton<IPasswordChangeProvider, DebugPasswordChangeProvider>();
@@ -82,6 +86,13 @@ namespace Unosquare.PassCore.Web
 #else
             services.Configure<PasswordChangeOptions>(Configuration.GetSection(AppSettingsSectionName));
             services.AddSingleton<IPasswordChangeProvider, PasswordChangeProvider>();
+#endif
+
+#if PASSCODE_MFA_DUO_PROVIDER
+            services.Configure<DuoMultiFactorAuthOptions>(Configuration.GetSection(AppSettingsSectionName));
+            services.AddSingleton<IMultiFactorAuthProvider, DuoMultiFactorAuthProvider>();
+#else
+            services.AddSingleton<IMultiFactorAuthProvider, DisabledMultiFactorAuthProvider>();
 #endif
 
             // Add framework services.

@@ -18,6 +18,10 @@ namespace Unosquare.PassCore.Web.Models
         [Compare(nameof(NewPassword), ErrorMessage = nameof(ApiErrorCode.FieldMismatch))]
         public string NewPasswordVerify { get; set; }
 
+        public string MfaSelection { get; set; }
+
+        public string MfaPasscode { get; set; }
+
         public string Recaptcha { get; set; }
     }
 }

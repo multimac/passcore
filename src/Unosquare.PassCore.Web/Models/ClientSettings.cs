@@ -37,6 +37,7 @@ namespace Unosquare.PassCore.Web.Models
         public string ErrorPasswordChangeNotAllowed { get; set; }
         public string SuccessAlertBody { get; set; }
         public string SuccessAlertTitle { get; set; }
+        public string InfoMultiFactorAuthRequired { get; set; }
         public string ErrorInvalidUser { get; set; }
         public string ErrorCaptcha { get; set; }
         public string ErrorFieldRequired { get; set; }
@@ -44,6 +45,8 @@ namespace Unosquare.PassCore.Web.Models
         public string ErrorComplexPassword { get; set; }
         public string ErrorConnectionLdap { get; set; }
         public string ErrorScorePassowrd { get; set; }
+        public string ErrorMfaUnavailable { get; set; }
+        public string ErrorMfaDenied { get; set; }
     }
 
     public class ErrorsPasswordForm

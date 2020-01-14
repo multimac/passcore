@@ -4,6 +4,8 @@ export interface IChangePasswordFormInitialModel {
     NewPasswordVerify: string;
     Recaptcha: string;
     Username: string;
+    MfaSelection: string;
+    MfaPasscode: string;
 }
 
 export interface IChangePasswordFormProps {
@@ -12,9 +14,12 @@ export interface IChangePasswordFormProps {
     parentRef: any;
     onValidated: any;
     shouldReset: boolean;
+    shouldResetRecaptcha: boolean;
     changeResetState: any;
     setReCaptchaToken: any;
     ReCaptchaToken: string;
+    setMfaOptions: any;
+    mfaOptions: any;
 }
 
 export interface IPasswordGenProps {

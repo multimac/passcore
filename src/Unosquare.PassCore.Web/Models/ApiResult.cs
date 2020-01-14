@@ -13,11 +13,18 @@ namespace Unosquare.PassCore.Web.Models
         /// <summary>
         /// Initializes a new instance of the <see cref="ApiResult"/> class.
         /// </summary>
+        public ApiResult() : this(null, null) { }
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ApiResult"/> class.
+        /// </summary>
         /// <param name="payload">The payload.</param>
-        public ApiResult(object payload = null)
+        /// <param name="options">The available multi-factor authentication options.</param>
+        private ApiResult(object? payload, ApiMultiFactorAuthOptions? options)
         {
             Errors = new List<ApiErrorItem>();
             Payload = payload;
+            MultiFactorOptions = options;
         }
 
         /// <summary>
@@ -26,9 +33,14 @@ namespace Unosquare.PassCore.Web.Models
         public List<ApiErrorItem> Errors { get; }
 
         /// <summary>
+        /// Gets or sets the multi-factor authentication options.
+        /// </summary>
+        public ApiMultiFactorAuthOptions? MultiFactorOptions { get; }
+
+        /// <summary>
         /// Gets or sets the payload.
         /// </summary>
-        public object Payload { get;  }
+        public object? Payload { get; }
 
         /// <summary>
         /// Creates a generic invalid request response.
@@ -36,7 +48,7 @@ namespace Unosquare.PassCore.Web.Models
         /// <returns>The ApiResult wih Invalid request error.</returns>
         public static ApiResult InvalidRequest()
         {
-            var result = new ApiResult("Invalid Request");
+            var result = new ApiResult("Invalid Request", null);
             result.Errors.Add(new ApiErrorItem(ApiErrorCode.Generic, "Invalid Request"));
 
             return result;
@@ -48,10 +60,20 @@ namespace Unosquare.PassCore.Web.Models
         /// <returns>The ApiResult from Invalid Recaptcha.</returns>
         public static ApiResult InvalidCaptcha()
         {
-            var result = new ApiResult("Invalid Recaptcha");
+            var result = new ApiResult("Invalid Recaptcha", null);
             result.Errors.Add(new ApiErrorItem(ApiErrorCode.InvalidCaptcha));
 
             return result;
+        }
+
+        /// <summary>
+        /// Requires a secondary authentication factor choice.
+        /// </summary>
+        /// <param name="options">The options to return to the client.</param>
+        /// <returns>The ApiResult from Requiers Multi Factor.</returns>
+        public static ApiResult RequiresMultiFactor(ApiMultiFactorAuthOptions options)
+        {
+            return new ApiResult(null, options);
         }
 
         /// <summary>

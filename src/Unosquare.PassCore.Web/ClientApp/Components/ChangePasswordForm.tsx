@@ -1,12 +1,18 @@
 import FormGroup from '@material-ui/core/FormGroup/FormGroup';
 import * as React from 'react';
 import { TextValidator } from 'uno-material-ui';
+import MenuItem from '@material-ui/core/MenuItem';
+import Select from '@material-ui/core/Select';
+import FormControl from '@material-ui/core/FormControl';
+import InputLabel from '@material-ui/core/InputLabel';
+import FormHelperText from '@material-ui/core/FormHelperText';
 import { useStateForModel } from 'uno-react';
 import { GlobalContext } from '../Provider/GlobalContext';
 import { IChangePasswordFormInitialModel, IChangePasswordFormProps } from '../types/Components';
 import { PasswordGenerator } from './PasswordGenerator';
 import { PasswordStrengthBar } from './PasswordStrengthBar';
 import { ReCaptcha } from './ReCaptcha';
+import { fetchRequest } from '../Utils/FetchRequest';
 
 const defaultState: IChangePasswordFormInitialModel = {
     CurrentPassword: '',
@@ -14,6 +20,8 @@ const defaultState: IChangePasswordFormInitialModel = {
     NewPasswordVerify: '',
     Recaptcha: '',
     Username: new URLSearchParams(window.location.search).get('userName') || '',
+    MfaSelection: '',
+    MfaPasscode: '',
 };
 
 export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProps> = ({
@@ -24,8 +32,12 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
     shouldReset,
     changeResetState,
     setReCaptchaToken,
+    shouldResetRecaptcha,
     ReCaptchaToken,
+    setMfaOptions,
+    mfaOptions,
 }: IChangePasswordFormProps) => {
+    const abortControllerRef = React.useRef(null);
     const [fields, handleChange] = useStateForModel({ ...defaultState });
 
     const {
@@ -47,6 +59,10 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
         usernameDefaultDomainHelperBlock,
         usernameHelpblock,
         usernameLabel,
+        mfaSelectionHelpblock,
+        mfaSelectionLabel,
+        mfaPasscodeHelpblock,
+        mfaPasscodeLabel,
     } = changePasswordForm;
 
     const { fieldRequired, passwordMatch, usernameEmailPattern, usernamePattern } = errorsPasswordForm;
@@ -56,6 +72,10 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
     const userNameHelperText = useEmail ? usernameHelpblock : usernameDefaultDomainHelperBlock;
 
     if (submitData) {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort()
+        }
+
         toSubmitData(fields);
     }
 
@@ -66,7 +86,7 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
                 if (recaptcha.siteKey && recaptcha.siteKey !== '') {
                     validated = validated && ReCaptchaToken !== '';
                 }
-                onValidated(!validated);
+                onValidated(validated);
             });
         }
     });
@@ -87,6 +107,34 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
             NewPasswordVerify: password,
         });
 
+    const checkMultiFactor = (e: any) => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort()
+        }
+
+        if (!fields.Username) {
+            return;
+        }
+
+        abortControllerRef.current = new AbortController();
+        fetchRequest(
+            `api/password/multi-factor?username=${fields.Username}`,
+            'GET',
+            null,
+            abortControllerRef.current.signal
+        ).then(
+            (response: any) => {
+                abortControllerRef.current = null;
+                if (!response || !response.multiFactorOptions) {
+                    setMfaOptions(null);
+                    return;
+                }
+
+                setMfaOptions(response.multiFactorOptions);
+            }
+        );
+    }
+
     return (
         <FormGroup row={false} style={{ width: '80%', margin: '15px 0 0 10%' }}>
             <TextValidator
@@ -98,6 +146,7 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
                 label={usernameLabel}
                 helperText={userNameHelperText}
                 name="Username"
+                onBlur={checkMultiFactor}
                 onChange={handleChange}
                 validators={userNameValidations}
                 value={fields.Username}
@@ -175,9 +224,58 @@ export const ChangePasswordForm: React.FunctionComponent<IChangePasswordFormProp
                     />
                 </>
             )}
+            {mfaOptions && (
+                <>
+                <FormControl>
+                    <InputLabel id="multi-factor-authentication-selection">
+                        {mfaSelectionLabel}
+                    </InputLabel>
+                    <Select
+                        inputProps={{
+                            tabIndex: 5
+                        }}
+                        labelId="multi-factor-authentication-selection"
+                        id="MfaSelection"
+                        name="MfaSelection"
+                        value={fields.MfaSelection}
+                        onChange={handleChange}
+                    >
+                        {mfaOptions.factors && mfaOptions.supportsPasscode && (
+                            <MenuItem value="passcode">Passcode</MenuItem>
+                        )}
+                        {mfaOptions.factors.map((pair: any) => {
+                            return <MenuItem value={pair.Value}>{pair.Key}</MenuItem>
+                        })}
+                    </Select>
+                    <FormHelperText>{mfaSelectionHelpblock}</FormHelperText>
+                </FormControl>
+                {mfaOptions.supportsPasscode
+                    && (!mfaOptions.factors || fields.MfaSelection === "passcode") && (
+                    <TextValidator
+                        inputProps={{
+                            tabIndex: 6
+                        }}
+                        label={mfaPasscodeLabel}
+                        helperText={mfaPasscodeHelpblock}
+                        id="MfaPasscode"
+                        name="MfaPasscode"
+                        onChange={handleChange}
+                        type="password"
+                        validators={['required']}
+                        value={fields.MfaPasscode}
+                        style={{
+                            height: '20px',
+                            marginBottom: '50px',
+                        }}
+                        fullWidth={true}
+                        errorMessages={[fieldRequired]}
+                    />
+                )}
+                </>
+            )}
 
             {recaptcha.siteKey && recaptcha.siteKey !== '' && (
-                <ReCaptcha setToken={setReCaptchaToken} shouldReset={false} />
+                <ReCaptcha setToken={setReCaptchaToken} shouldReset={shouldResetRecaptcha} />
             )}
         </FormGroup>
     );

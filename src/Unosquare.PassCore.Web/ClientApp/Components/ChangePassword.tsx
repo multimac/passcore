@@ -1,6 +1,7 @@
 import Button from '@material-ui/core/Button/Button';
 import Paper from '@material-ui/core/Paper/Paper';
 import * as React from 'react';
+import { LoadingIcon } from 'uno-material-ui';
 import { ValidatorForm } from 'uno-react';
 import { ChangePasswordDialog } from '../Dialogs/ChangePasswordDialog';
 import { GlobalContext, SnackbarContext } from '../Provider/GlobalContext';
@@ -8,8 +9,9 @@ import { fetchRequest } from '../Utils/FetchRequest';
 import { ChangePasswordForm } from './ChangePasswordForm';
 
 export const ChangePassword: React.FunctionComponent<{}> = () => {
-    const [disabled, setDisabled] = React.useState(true);
+    const [validated, setValidated] = React.useState(false);
     const [submit, setSubmit] = React.useState(false);
+    const [requestInProgress, setRequestInProgress] = React.useState(false);
     const [dialogIsOpen, setDialog] = React.useState(false);
     const [token, setToken] = React.useState('');
     const validatorFormRef = React.useRef(null);
@@ -17,14 +19,25 @@ export const ChangePassword: React.FunctionComponent<{}> = () => {
     const { changePasswordButtonLabel } = changePasswordForm;
     const { sendMessage } = React.useContext(SnackbarContext);
     const [shouldReset, setReset] = React.useState(false);
+    const [shouldResetRecaptcha, setResetRecaptcha] = React.useState(false);
+    const [mfaOptions, setMfaOptions] = React.useState(null);
 
     const onSubmitValidatorForm = () => setSubmit(true);
 
     const toSubmitData = (formData: {}) => {
+        setSubmit(false);
+        setRequestInProgress(true);
+
         fetchRequest('api/password', 'POST', JSON.stringify({ ...formData, Recaptcha: token })).then(
             (response: any) => {
-                setSubmit(false);
-                if (response.errors && response.errors.length) {
+                setResetRecaptcha(!shouldResetRecaptcha);
+                setRequestInProgress(false);
+
+                if (response.multiFactorOptions) {
+                    setMfaOptions(response.multiFactorOptions);
+                    sendMessage(alerts.infoMultiFactorAuthRequired, "info");
+                    return;
+                } else if (response.errors && response.errors.length) {
                     let errorAlertMessage = '';
                     response.errors.forEach((error: any) => {
                         switch (error.errorCode) {
@@ -61,6 +74,12 @@ export const ChangePassword: React.FunctionComponent<{}> = () => {
                             case 10:
                                 errorAlertMessage += alerts.errorScorePassowrd;
                                 break;
+                            case 11:
+                                errorAlertMessage += alerts.errorMfaUnavailable;
+                                break;
+                            case 12:
+                                errorAlertMessage += alerts.errorMfaDenied;
+                                break;
                         }
                     });
 
@@ -74,10 +93,10 @@ export const ChangePassword: React.FunctionComponent<{}> = () => {
 
     const onCloseDialog = () => {
         setDialog(false);
+        setMfaOptions(null);
+
         setReset(true);
     };
-
-    const marginButton = recaptcha.siteKey && recaptcha.siteKey !== '' ? '25px 0 0 180px' : '100px 0 0 180px';
 
     ValidatorForm.addValidationRule('isUserName', (value: string) =>
         new RegExp(validationRegex.usernameRegex).test(value),
@@ -94,7 +113,6 @@ export const ChangePassword: React.FunctionComponent<{}> = () => {
             <Paper
                 style={{
                     borderRadius: '10px',
-                    height: '550px',
                     marginTop: '75px',
                     width: '650px',
                     zIndex: 1,
@@ -111,24 +129,33 @@ export const ChangePassword: React.FunctionComponent<{}> = () => {
                         submitData={submit}
                         toSubmitData={toSubmitData}
                         parentRef={validatorFormRef}
-                        onValidated={setDisabled}
+                        onValidated={setValidated}
                         shouldReset={shouldReset}
+                        shouldResetRecaptcha={shouldResetRecaptcha}
                         changeResetState={setReset}
                         setReCaptchaToken={setToken}
+                        setMfaOptions={setMfaOptions}
+                        mfaOptions={mfaOptions}
                         ReCaptchaToken={token}
                     />
                     <Button
                         type="submit"
                         variant="contained"
                         color="primary"
-                        disabled={disabled}
+                        disabled={!validated || submit || requestInProgress}
                         style={{
-                            margin: marginButton,
+                            marginBottom: "50px",
+                            marginLeft: "205px",
+                            marginTop: "25px",
                             width: '240px',
                         }}
                     >
                         {changePasswordButtonLabel}
                     </Button>
+                    {(submit || requestInProgress) && (
+                        <div style={{display: "inline-flex", marginBottom: "50px", width: "100%"}}>
+                            <LoadingIcon />
+                        </div>)}
                 </ValidatorForm>
             </Paper>
             <ChangePasswordDialog open={dialogIsOpen} onClose={onCloseDialog} />

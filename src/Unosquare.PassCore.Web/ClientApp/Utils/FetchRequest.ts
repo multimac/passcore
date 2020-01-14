@@ -1,4 +1,4 @@
-export async function fetchRequest(url: string, requestMethod: string, requestBody?: any) {
+export async function fetchRequest(url: string, requestMethod: string, requestBody?: any, signal?: AbortSignal) {
     const headers: Headers = new Headers();
     headers.append('Accept', 'application/json');
     headers.append('Content-Type', 'application/json');
@@ -7,6 +7,7 @@ export async function fetchRequest(url: string, requestMethod: string, requestBo
         body: requestBody ? requestBody : null,
         headers,
         method: requestMethod,
+        signal: signal ? signal : null,
     };
 
     const request = new Request(url, init);

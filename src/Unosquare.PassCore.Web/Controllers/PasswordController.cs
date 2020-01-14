@@ -5,6 +5,7 @@ namespace Unosquare.PassCore.Web.Controllers
     using Microsoft.Extensions.Logging;
     using Microsoft.Extensions.Options;
     using Models;
+    using Newtonsoft.Json.Linq;
     using System;
     using System.Collections.Generic;
     using System.Net.Http;
@@ -22,6 +23,7 @@ namespace Unosquare.PassCore.Web.Controllers
         private readonly ILogger _logger;
         private readonly ClientSettings _options;
         private readonly IPasswordChangeProvider _passwordChangeProvider;
+        private readonly IMultiFactorAuthProvider _multiFactorAuthProvider;
         private readonly RNGCryptoServiceProvider? _rngCsp;
 
         /// <summary>
@@ -33,11 +35,13 @@ namespace Unosquare.PassCore.Web.Controllers
         public PasswordController(
             ILogger<PasswordController> logger,
             IOptions<ClientSettings> optionsAccessor,
-            IPasswordChangeProvider passwordChangeProvider)
+            IPasswordChangeProvider passwordChangeProvider,
+            IMultiFactorAuthProvider multiFactorAuthProvider)
         {
             _logger = logger;
             _options = optionsAccessor.Value;
             _passwordChangeProvider = passwordChangeProvider;
+            _multiFactorAuthProvider = multiFactorAuthProvider;
 
             if (_options.UsePasswordGeneration) _rngCsp = new RNGCryptoServiceProvider();
         }
@@ -60,7 +64,30 @@ namespace Unosquare.PassCore.Web.Controllers
             if (_rngCsp == null)
                 return NotFound();
 
-            return Json(new {password = PasswordGenerator.Generate(_rngCsp, _options.PasswordEntropy)});
+            return Json(new { password = PasswordGenerator.Generate(_rngCsp, _options.PasswordEntropy) });
+        }
+
+        /// <summary>
+        /// Returns the multi-factor options for the given username.
+        /// </summary>
+        /// <returns>An <see cref="ApiResult" /> containing the multi-factor options.</returns>
+        [HttpGet]
+        [Route("multi-factor")]
+        public async Task<IActionResult> GetMultiFactorOptions([FromQuery] string username)
+        {
+            var (options, error) = await _multiFactorAuthProvider.GetOptions(username);
+
+            if (error != null)
+            {
+                var result = new ApiResult();
+                result.Errors.Add(error);
+
+                return Json(result);
+            }
+
+            return (options != null)
+                ? Json(ApiResult.RequiresMultiFactor(options))
+                : Json(new ApiResult());
         }
 
         /// <summary>
@@ -116,15 +143,54 @@ namespace Unosquare.PassCore.Web.Controllers
                     return BadRequest(result);
                 }
 
-                var resultPasswordChange = _passwordChangeProvider.PerformPasswordChange(
+                if (!string.IsNullOrEmpty(model.MfaSelection))
+                {
+                    var multiFactorAuth = await _multiFactorAuthProvider.PerformMultiFactorAuthentication(
                         model.Username,
-                        model.CurrentPassword,
-                        model.NewPassword);
+                        model.MfaSelection,
+                        model.MfaPasscode);
 
-                if (resultPasswordChange == null) 
-                    return Json(result);
+                    if (multiFactorAuth != null)
+                        result.Errors.Add(multiFactorAuth);
+                    else
+                    {
+                        var resultPasswordChange = _passwordChangeProvider.PerformPasswordChange(
+                            model.Username,
+                            model.CurrentPassword,
+                            model.NewPassword);
 
-                result.Errors.Add(resultPasswordChange);
+                        if (resultPasswordChange == null)
+                            return Json(result);
+
+                        result.Errors.Add(resultPasswordChange);
+                    }
+                }
+                else
+                {
+                    var (options, error) = await _multiFactorAuthProvider.GetOptions(
+                        model.Username);
+
+                    if (options != null)
+                    {
+                        return Json(ApiResult.RequiresMultiFactor(options));
+                    }
+                    else if (error != null)
+                    {
+                        result.Errors.Add(error);
+                    }
+                    else
+                    {
+                        var resultPasswordChange = _passwordChangeProvider.PerformPasswordChange(
+                            model.Username,
+                            model.CurrentPassword,
+                            model.NewPassword);
+
+                        if (resultPasswordChange == null)
+                            return Json(result);
+
+                        result.Errors.Add(resultPasswordChange);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -150,9 +216,10 @@ namespace Unosquare.PassCore.Web.Controllers
 
             using var client = new HttpClient();
             var response = await client.GetStringAsync(requestUrl);
-            var validationResponse = JsonSerializer.Deserialize<Dictionary<string, string>>(response);
+            var validationResponse = JObject.Parse(response);
 
-            return validationResponse.ContainsKey("success") && bool.TryParse(validationResponse["success"], out var result) && result;
+            return validationResponse.ContainsKey("success")
+                && validationResponse["success"].ToObject<bool>();
         }
     }
 }

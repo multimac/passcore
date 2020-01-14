@@ -9,6 +9,9 @@ interface IAlerts {
     errorInvalidUser: string;
     errorPasswordChangeNotAllowed: string;
     errorScorePassowrd: string;
+    errorMfaUnavailable: string;
+    errorMfaDenied: string;
+    infoMultiFactorAuthRequired: string;
     successAlertBody: string;
     successAlertTitle: string;
 }
@@ -25,6 +28,10 @@ interface IChangePasswordForm {
     usernameDefaultDomainHelperBlock: string;
     usernameHelpblock: string;
     usernameLabel: string;
+    mfaSelectionHelpblock: string;
+    mfaSelectionLabel: string;
+    mfaPasscodeHelpblock: string;
+    mfaPasscodeLabel: string;
 }
 
 interface IErrorsPasswordForm {
